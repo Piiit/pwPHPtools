@@ -30,11 +30,12 @@ class WikiID {
 			throw new Exception("Invalid ID '$this->id'!");
 		}
 		
-		preg_match("/(.*)#(.*)/", $this->id, $lpt);
-		$this->id = isset($lpt[1]) ? $lpt[1] : $this->id;
+		$matches = array();
+		preg_match("/(.*)#(.*)/", $this->id, $matches);
+		$this->id = isset($matches[1]) ? $matches[1] : $this->id;
 		$this->anchor = null;
-		if (isset($lpt[2]) && strlen($lpt[2]) > 0) {
-			$this->anchor = $lpt[2];
+		if (isset($matches[2]) && strlen($matches[2]) > 0) {
+			$this->anchor = $matches[2];
 		}
 		
 		$this->fullns = ":".self::cleanNamespaceString($this->id);
