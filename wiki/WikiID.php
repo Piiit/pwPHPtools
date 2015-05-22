@@ -43,8 +43,8 @@ class WikiID {
 		$this->nsArray = preg_split("#:#", $this->fullns, null, PREG_SPLIT_NO_EMPTY);
 		$this->ns = end($this->nsArray);
 		$this->id = $this->fullns.$this->pg;
-		$this->path = pw_u2t(str_replace(":", "/", $this->id));
-		$this->fullnspath = pw_u2t(str_replace(":", "/", $this->fullns));
+		$this->path = str_replace(":", "/", $this->id);
+		$this->fullnspath = str_replace(":", "/", $this->fullns);
 	}
 	
 	public static function fromPath($path, $storagePath = null, $fileExtension = null) {

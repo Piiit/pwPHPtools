@@ -257,7 +257,7 @@ class FileTools {
 		if(strpos($text,"\r") && strpos($text, "\n")===false) {
 			return new TextFileFormat(TextFileFormat::OLDMAC);
 		}
-		if (($nr = strpos($text,"\n\r")) || ($rn = strpos($text, "\r\n"))) {
+		if (($nr = strpos($text,"\n\r")) || strpos($text, "\r\n")) {
 			if(isset($nr)) {
 				$text = str_replace("\n\r", "", $text);
 			} else {
@@ -306,7 +306,8 @@ class FileTools {
 	 */
 	public static function basename($path, $extension = null) {
 		$path = self::normalizePath($path);
-		return basename($path, $extension);
+		$path = basename($path, $extension);
+		return $path;
 	}
 	
 	/**
