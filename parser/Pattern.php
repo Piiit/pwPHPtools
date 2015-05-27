@@ -180,9 +180,9 @@ class Pattern extends Node {
 	private function _setLevel() {
 		// Count all (...), but not lookarounds (?...)!
 		// TODO: ERROR-Handling + Nesting-Level (...(...)...) + OR-Operator
-		$cox = array();
-		preg_match_all('/\([^\?][^\)]*\)|\(\)/', $this->_entry, $cox);
-	 	$this->_level = count($cox[0]);
+		$matches = array();
+		preg_match_all('/\([^\?][^\)]*\)|\(\)/', $this->_entry, $matches);
+	 	$this->_level = count($matches[0]);
 	 	if ($this->_level == 0) {
 	 		$this->_entry .= '()';
 	 		$this->_level = 1;
