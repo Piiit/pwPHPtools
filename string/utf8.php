@@ -241,6 +241,7 @@ if(!function_exists('utf8_substr')){
             }
         }
 
+        $match = array();
         if (!preg_match('#'.$offset_pattern.$length_pattern.'#us',$str,$match)) return '';
         return $match[1];
     }
@@ -365,6 +366,7 @@ if(!function_exists('utf8_ucfirst')){
             case 1:
                 return utf8_strtoupper($str);
             default:
+            	$matches = array();
                 preg_match('/^(.{1})(.*)$/us', $str, $matches);
                 //Something wrong... keep string!
                 if(sizeof($matches) < 3) {
@@ -461,7 +463,7 @@ if(!function_exists('utf8_stripspecials')){
      * @param  string $additional Additional chars to strip (used in regexp char class)
      */
     function utf8_stripspecials($string,$repl='',$additional=''){
-        global $UTF8_SPECIAL_CHARS;
+//         global $UTF8_SPECIAL_CHARS;
         global $UTF8_SPECIAL_CHARS2;
 
         static $specials = null;
@@ -922,6 +924,7 @@ if(!function_exists('utf8_bad_replace')){
          '|\xF4[\x80-\x8F][\x80-\xBF]{2}'.        # plane 16
          '|(.{1}))';                              # invalid byte
         ob_start();
+        $matches = array();
         while (preg_match('/'.$UTF8_BAD.'/S', $str, $matches)) {
             if ( !isset($matches[2])) {
                 echo $matches[0];

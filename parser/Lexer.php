@@ -207,29 +207,30 @@ class Lexer {
 		$pattern = $this->_patternTable->get($parent->getName());
 		$this->_currentMode = $pattern;
 		
+		$matches = array();
 		$regex = $this->_currentMode->getRegexp();
-		if (!preg_match($regex, $this->_temptxt, $m, PREG_OFFSET_CAPTURE) && $pattern->getName() != Token::DOC) {
+		if (!preg_match($regex, $this->_temptxt, $matches, PREG_OFFSET_CAPTURE) && $pattern->getName() != Token::DOC) {
 			$pattern = $this->_patternTable->get($parent->getName());
 			$expected = stripslashes($pattern->getExit());
 			$found = substr($this->_temptxt, 0, strlen($expected));
 			$expected = pw_s2e_whiteSpace($expected);
 				
-			$dbginf = array(
-				'TYPE' 		=> 'Syntax',	// TODO use constants not strings for dbginf types!
-				'DESC'		=> "The Mode '{$pattern->getName()}' has been started here, but wasn't ever ended!",
-				'LINENR' 	=> $this->_currentLineNumber,
-				'TXTPOS' 	=> $this->_textPosition,
-				'ENTRYNODE' => $parent,
-				'PATTERN'	=> $pattern,
-				//'ENTRYTOKEN' => ... TODO started @ line ".$dientry['LINENR']."; textposition = ".$dientry['TXTPOS'] save debuginfo inside a tokenlist.
-			);
+// 			$dbginf = array(
+// 				'TYPE' 		=> 'Syntax',	// TODO use constants not strings for dbginf types!
+// 				'DESC'		=> "The Mode '{$pattern->getName()}' has been started here, but wasn't ever ended!",
+// 				'LINENR' 	=> $this->_currentLineNumber,
+// 				'TXTPOS' 	=> $this->_textPosition,
+// 				'ENTRYNODE' => $parent,
+// 				'PATTERN'	=> $pattern,
+// 				//'ENTRYTOKEN' => ... TODO started @ line ".$dientry['LINENR']."; textposition = ".$dientry['TXTPOS'] save debuginfo inside a tokenlist.
+// 			);
 
 			$errorMsg = "Exit of $pattern not found: '$expected' expected but '$found' found @$this->_textPosition (line $this->_currentLineNumber).";
 			TestingTools::logError($errorMsg);
 			throw new Exception($errorMsg);
 		}
 
-		$token = $this->_getNamedToken($m);
+		$token = $this->_getNamedToken($matches);
 // 		TestingTools::debug($token);
 		
 // 		if ($token->getTextLength() == 0 && $this->_lastNode->getName() == $token->getName()) {
@@ -240,14 +241,14 @@ class Lexer {
 
 		$this->_temptxt = substr($this->_temptxt, $token->getTextLength());
 
-		$debugInfo = array(
-			"LINENR"       => $this->_currentLineNumber,
-			"LASTNODE"     => $this->_lastNode,
-			"PARENT"       => $parent,
-			"TOKEN"        => $token,
-			"TXTPOS"       => $this->_textPosition,
-			"PARENTSTACK"  => $this->_parentStack,
-		);
+// 		$debugInfo = array(
+// 			"LINENR"       => $this->_currentLineNumber,
+// 			"LASTNODE"     => $this->_lastNode,
+// 			"PARENT"       => $parent,
+// 			"TOKEN"        => $token,
+// 			"TXTPOS"       => $this->_textPosition,
+// 			"PARENTSTACK"  => $this->_parentStack,
+// 		);
 		TestingTools::logDebug($this->_logFormat("TOKEN FOUND", "$token @$this->_textPosition: "));
 
 		$this->_textPosition += $token->getTextLength();
@@ -413,7 +414,7 @@ class Lexer {
 	public function getPatternTableAsString() {
 		$ptable = $this->getPatternTable()->getArray();
 		$out = "";
-		foreach ($ptable as $i => $p) {
+		foreach ($ptable as $p) {
 			$out .= "$p\n";
 		}
 		return $out;
@@ -636,6 +637,7 @@ class Lexer {
 		$lenmarest = strlen($this->_aftermatch.$this->_currentLine);
 		$beforeMatch = substr($this->_textInput, 0, strlen($this->_textInput) - $lenmarest);
 
+		$lines = array();
 		preg_match_all("#\n#", $beforeMatch.$this->_currentLine, $lines);
 		$lines = $lines[0];
 		$this->_currentLineNumber = count($lines);
