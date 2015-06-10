@@ -188,8 +188,6 @@ class Pattern extends Node {
 	 		$this->_level = 1;
 	 	}
 	}
-	
-	
 
 	/**
 	 * @param string $_restore
@@ -197,7 +195,6 @@ class Pattern extends Node {
 	public function setRestore($restore) {
 		$this->_restore = $restore;
 	}
-	
 	
 	/**
 	 * @return the $regexp
@@ -217,7 +214,6 @@ class Pattern extends Node {
 	public function setRegexp($regexp) {
 		$this->_regexp = $regexp;
 	}
-
 
 	/**
 	 * Map new array keys in order that they correspond to the pattern-levels inside the regexp-match!

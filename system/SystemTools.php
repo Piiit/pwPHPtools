@@ -21,7 +21,12 @@ class SystemTools {
 	public static function autoloadInit($directoryList) {
 		self::$autoloadDirectories = array();
 		foreach($directoryList as $directory) {
-			self::$autoloadDirectories = array_merge(self::$autoloadDirectories, glob($directory."/*/", GLOB_ONLYDIR));
+			
+			self::$autoloadDirectories = array_merge(
+				self::$autoloadDirectories, 
+				glob($directory."/*/", GLOB_ONLYDIR)
+			);
+			
 		}
 	}
 }

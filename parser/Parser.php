@@ -28,7 +28,7 @@ class Parser implements TreeWalkerConfig {
 	
 	public function getUserInfo($key) {
 		if(!$this->isUserInfo($key)) {
-			throw new Exception("UserInfo '$key' does not exists!");
+			throw new Exception("UserInfo '$key' does not exist!");
 		}
 		return $this->_userInfo[$key];
 	}
