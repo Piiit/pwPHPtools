@@ -34,9 +34,9 @@ class Node {
 	 * @return string
 	 */
 	public function __toString() {
-		$data = (is_array($this->getData()) ? implode('(,)', $this->getData()) : $this->getData());
+		$data = (is_array($this->getData()) ? ("[".implode(",", $this->getData())."]") : ("'".$this->getData())."'");
 		$data = pw_s2e_whiteSpace($data);
-		return "[Node: ".$this->getName().($data ? "='$data'" : "")."]";
+		return "[Node: ".$this->getName().($data ? "=$data" : "")."]";
 	}
 
 	/**

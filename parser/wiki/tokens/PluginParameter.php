@@ -27,7 +27,7 @@ class PluginParameter extends ParserRule implements ParserRuleHandler, LexerRule
 	}
 
 	public function getPattern() {
-		return new Pattern($this->getName(), Pattern::TYPE_SECTION, '\|', '(?=\||~~)');
+		return new Pattern($this->getName(), Pattern::TYPE_SECTION, '\|', '(?=\||}})');
 	}
 	
 	public function getAllowedModes() {
