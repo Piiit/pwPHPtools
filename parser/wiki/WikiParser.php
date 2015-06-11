@@ -18,7 +18,7 @@ class WikiParser {
 	private $pluginList = array();
 	
 	
-	public function __construct($pathToPlugins = null) {
+	public function __construct($pathUserDefinedTokens = null) {
 		$this->lexer = new Lexer();
 		$this->parser = new Parser();
 		
@@ -27,6 +27,7 @@ class WikiParser {
 		 * plugins are user-defined additional patterns.
 		 */
 		$pathTokens = realpath(dirname(__FILE__).'/tokens').'/';
+		$pathPlugins = realpath(dirname(__FILE__).'/plugins').'/';
 		
 		// include all parser token handlers...
 		if (!is_dir($pathTokens)) {
@@ -34,11 +35,11 @@ class WikiParser {
 		}
 		
 		//Plugins are optional
-		if ($pathToPlugins != null && !is_dir($pathToPlugins)) {
-			throw new Exception("'$pathToPlugins' is not a valid plugin path!");
+		if (!is_dir($pathPlugins)) {
+			throw new Exception("'$pathPlugins' is not a valid plugin path!");
 		}
 		
-		$handlerList = array_merge(glob($pathTokens."*.php"), glob($pathToPlugins."/*.php"));
+		$handlerList = array_merge(glob($pathTokens."*.php"), glob($pathPlugins."*.php"));
 		TestingTools::debug($handlerList);
 		
 		$handlerListAbstract = array();
@@ -46,8 +47,10 @@ class WikiParser {
 		foreach ($handlerList as $handler) {
 			require_once $handler;
 			$className = FileTools::basename($handler, ".php");
+			
 			if (class_exists($className)) {
 				$class = null;
+				TestingTools::debug("TEST: ".$className);
 				$interfaces = class_implements($className);
 				if (array_search('LexerRuleHandler', $interfaces)) {
 					$class = new $className;
@@ -67,6 +70,7 @@ class WikiParser {
 				}
 			}
 		}
+		
 		
 		$this->lexer->registerHandlerList($handlerListAbstract);
 	}
