@@ -323,6 +323,9 @@ class Node {
 	 * @return array List of found nodes.
 	 */
 	private function _getNodesByNameREC($name, $node, $nodeList = null) {
+		if (! $node->hasChildren()) {
+			return null;
+		}
 		for ($node = $node->getFirstChild(); $node != null; $node = $node->getNextSibling()) {
 			if ($node->getname() == $name) {
 				$nodeList[] = $node;

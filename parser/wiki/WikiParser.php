@@ -79,14 +79,6 @@ class WikiParser {
 		$this->lexer->setSource($text);
 		$this->lexer->parse();
 		
-		/*
-		 * User information passed to the wiki parser to be accessed from 
-		 * syntax handlers.
-		 */
-		$this->setUserInfo('lexer.performance', $this->lexer->getExecutionTime());
-		$this->setUserInfo('lexer.version', $this->lexer->getVersion());
-		$this->setUserInfo('file.type', FileTools::getTextFileFormat($text)->getString());
-		
 		foreach($this->pluginList as $pluginHandler) {
 			$pluginHandler->runBefore($this->parser, $this->lexer);
 		}

@@ -7,7 +7,7 @@ class Plugin extends ParserRule implements ParserRuleHandler, LexerRuleHandler {
 	}
 	
 	public function getPattern() {
-		return new Pattern($this->getName(), Pattern::TYPE_SECTION, '{{([\w]*)(\.[\w]*)?', '}}');
+		return new Pattern($this->getName(), Pattern::TYPE_SECTION, '{{([\w\.]*)', '}}');
 	}
 	
 	public function getAllowedModes() {
@@ -24,14 +24,19 @@ class Plugin extends ParserRule implements ParserRuleHandler, LexerRuleHandler {
 	public function onEntry() {
 		$node = $this->getNode();
 		$nodeData = $node->getData();
-		$pluginName = strtolower($nodeData[0]);
 		
 		/*
-		 * Remove first character (i.e., the leading dot) if the plugin has a 
-		 * specified method. Note: This could be avoided if the lexer would 
-		 * support "OR" connected patterns.
+		 * Every command consists of several names separated by a '.' (dot).
+		 * First part is the plugin name, the following parts define categories.
 		 */
-		$methodName = count($nodeData) <= 1 ? null : substr(strtolower($nodeData[1]), 1);
+		$fqnList = explode(".", strtolower($nodeData[0]));
+		$pluginName = $fqnList[0];
+		array_shift($fqnList);
+		$pluginCategories = $fqnList;
+				
+		/*
+		 * The class name instance is always of the pattern: PluginPluginName.
+		 */
 		$className = "Plugin".ucfirst($pluginName);
 		
 		if(class_exists($className)) {
@@ -40,13 +45,14 @@ class Plugin extends ParserRule implements ParserRuleHandler, LexerRuleHandler {
 			return nop("PLUGIN '".$className."' not found.");
 		}
 		
-		try {
-			return $plugin->run($this->getParser(), $node, $methodName, $node->getNodesByName("pluginparameter"));
-		} catch (Exception $e) {
-			return $plugin->run($this->getParser(), $node, $methodName, array());
-		}
+		return $plugin->run(
+			$this->getParser(), 
+			$node, 
+			$pluginCategories, 
+			$node->getNodesByName("pluginparameter")
+		);
 	}
-
+		
 	public function onExit() {
 	}
 

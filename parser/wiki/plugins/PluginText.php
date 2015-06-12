@@ -17,11 +17,11 @@ class PluginText implements WikiPluginHandler {
 	public function runAfter(Parser $parser, Lexer $lexer) {
 	}
 
-	public function run(Parser $parser, Node $node, $pluginMethod, Array $parameters) {
+	public function run(Parser $parser, Node $node, $categories, $parameters) {
 	    $token = new ParserRule($node, $parser);
 	    $text = pw_e2u($token->getText());
 	
-	    switch ($pluginMethod) {
+	    switch ($categories[0]) {
 	      	case "ucfirst":
 		        $out = utf8_ucfirst($text);
 	      	break;
@@ -38,7 +38,7 @@ class PluginText implements WikiPluginHandler {
 	        	$out = str_replace(".", ",", $text);
 	      	break;
 	    	default: 
-	    		return nop("Plugin 'text': No method '$pluginMethod' found.");
+	    		return nop("Plugin 'text': No method '".implode(".", $categories)."' found.");
 	    }
 	
 	    $out = pw_s2e($out);

@@ -21,8 +21,8 @@ class PluginToc implements WikiPluginHandler {
 	public function runAfter(Parser $parser, Lexer $lexer) {
 	}
 
-	public function run(Parser $parser, Node $node, $pluginMethod, Array $parameters) {
-		return "PLUGIN ".$this->getPluginName().$pluginMethod;
+	public function run(Parser $parser, Node $node, $categories, $parameters) {
+		return "PLUGIN ".$this->getPluginName().implode(".", $categories);
 
 	}
 

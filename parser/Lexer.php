@@ -61,6 +61,7 @@ class Lexer {
 	private $_rootNode = null;  // root of the AST (=Abstract Syntax Tree)
 	private $_handlerTable = null;
 	private $_handlerTableActive = null;
+	private $_originalTextFileFormat = null;
 	
 
 	public function __construct() {
@@ -120,13 +121,19 @@ class Lexer {
 	public function getSource() {
 		return $this->_textInput;
 	}
+	
+	public function getOrigTextFileFormat() {
+		return $this->_originalTextFileFormat;
+	}
 
 	public function setSource($source) {
 
 		if (!is_string($source)) {
 			throw new InvalidArgumentException("First argument must be string!");
 		}
-
+		
+		$this->_originalTextFileFormat = FileTools::getTextFileFormat($source);
+		
 		FileTools::setTextFileFormat($source, new TextFileFormat(TextFileFormat::UNIX));
 		$source = "\n".$source."\n";
 		$this->_textInput = $source; 
