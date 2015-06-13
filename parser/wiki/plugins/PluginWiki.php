@@ -18,6 +18,15 @@ class PluginWiki implements WikiPluginHandler {
 		 */
 		$parser->setUserInfo('wiki.file.type', $lexer->getOrigTextFileFormat()->getString());
 		$parser->setUserInfo('wiki.lexer.performance', $lexer->getExecutionTime());
+		
+		/*
+		 * Create an index table to be used for headers and table of content
+		 * plugin.
+		 */
+		$parser->setUserInfo(
+				'indextable',
+				WikiTocTools::createIndexTable($parser, $lexer->getRootNode())
+		);
 	}
 
 	public function runAfter(Parser $parser, Lexer $lexer) {
@@ -93,6 +102,15 @@ class PluginWiki implements WikiPluginHandler {
 				$out = $this->catFile(array_slice($categories, 1), $parser);
 			break;
 			
+			/*
+			 * The following methods build HTML to be shown, we do not want to
+			 * encode htmlentities.
+			 */
+			case "toc":
+				return $this->catToc(array_slice($categories, 1), $parser);
+			case "trace":
+				return $this->catTrace(array_slice($categories, 1), $parser);
+			
 	    }
 	    
 	    if ($out === null) {
@@ -102,6 +120,61 @@ class PluginWiki implements WikiPluginHandler {
 	    $out = pw_s2e($out);
 	    return $out;
 
+	}
+	
+	function catTrace ($cat, Parser $parser) {
+		$sep = ' &raquo; ';
+	
+		$id = pw_wiki_getid();
+	
+		if($id->getID() == ":".WIKINSDEFAULTPAGE || $id->getID() == ":") {
+			$out = "Home";
+		} else {
+			$out = "<a href='?id=".pw_s2url(":".WIKINSDEFAULTPAGE)."'>Home</a>";
+		}
+	
+		$current_namespace = "";
+		foreach ($id->getFullNSAsArray() as $index => $namespace) {
+			if($id->isNS() && $index == sizeof($id->getFullNSAsArray()) - 1) {
+				$out .= $sep.pw_s2e(utf8_ucfirst($namespace));
+			} else {
+				$current_namespace .= $namespace.":";
+				$out .= $sep."<a href='?id=:$current_namespace'>".pw_s2e(utf8_ucfirst($namespace))."</a>";
+			}
+		}
+	
+		if($id->isNS() || $id->getPage() == WIKINSDEFAULTPAGE) {
+			return $out;
+		}
+	
+	
+		return $out.$sep.utf8_ucfirst($id->getPage());
+	}
+	
+	function catToc($cat, Parser $parser) {
+		$indextable = $parser->getUserInfo('indextable');
+		if ($indextable instanceof IndexTable) {
+			$out	= '<div class="toc" id="__toc">';
+			$lastlvl = 0;
+			foreach($indextable->getAsArray() as $item) {
+				if ($lastlvl < $item->getLevel()) {
+					$diff = $item->getLevel() - $lastlvl;
+					for ($i = 0; $i < $diff; $i++)
+						$out .= '<ul>';
+				} elseif ($lastlvl > $item->getLevel()) {
+					$diff = $lastlvl - $item->getLevel();
+					for ($i = 0; $i < $diff; $i++)
+						$out .= '</ul>';
+				}
+				$out .= '<li>';
+				$out .= '<a href="#header_'.$item->getId().'">'.$item->getId().' '.pw_s2e($item->getText()).'</a>';
+				$out .= '</li>';
+				$lastlvl = $item->getLevel();
+			}
+			$out .= '</ul>';
+			$out .= '</div>';
+		}
+		return $out;
 	}
 	
 	public function catLexer($cat, Parser $parser) {
