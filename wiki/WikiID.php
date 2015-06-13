@@ -156,7 +156,7 @@ class WikiID {
 			throw new InvalidArgumentException("Argument must be a string!");
 		}
 		if(!self::isvalid($id)) {
-			throw new Exception("Argument is not a valid wiki id!");
+			throw new Exception("Argument is not a valid wiki id! '$id' given!");
 		}
 		return $id[0] == ":"; 
 	}

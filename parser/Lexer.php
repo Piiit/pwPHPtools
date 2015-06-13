@@ -234,6 +234,8 @@ class Lexer {
 
 			$errorMsg = "Exit of $pattern not found: '$expected' expected but '$found' found @$this->_textPosition (line $this->_currentLineNumber).";
 			TestingTools::logError($errorMsg);
+			
+			//TODO Make a WikiSyntaxErrorException(); and add textposition and other infos
 			throw new Exception($errorMsg);
 		}
 
