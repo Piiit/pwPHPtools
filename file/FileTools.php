@@ -378,6 +378,22 @@ class FileTools {
 		return $path;
 	}
 	
+	/**
+	 * Find all dirs recursively starting from $start.
+	 * This can be used as enumerator in a foreach loop.
+	 */
+	static function findAllDirs($start) {
+		$dirStack=[$start];
+		while($dir=array_shift($dirStack)) {
+			$ar=glob($dir.'/*',GLOB_ONLYDIR|GLOB_NOSORT);
+			if(!$ar) continue;
+	
+			$dirStack=array_merge($dirStack,$ar);
+			foreach($ar as $d)
+				yield ($d);
+		}
+	}
+	
 }
 
 ?>

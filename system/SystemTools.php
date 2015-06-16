@@ -1,32 +1,39 @@
 <?php
 
-if (!defined('INC_PATH')) {
-	define ('INC_PATH', realpath(dirname(__FILE__).'/../../').'/');
-}
-require_once INC_PATH.'pwTools/debug/TestingTools.php';
+require_once PW_TOOLS_PATH.'debug/TestingTools.php';
 
-function __autoload($classname) {
-	foreach(SystemTools::$autoloadDirectories as $dir) {
-		if(file_exists($dir.$classname.".php")) {
-			TestingTools::debug("Loading class ".$dir.$classname.".php");
-			require_once($dir.$classname.".php");
-		}
-	}
-}
+
 
 class SystemTools {
 	
-	public static $autoloadDirectories;
+	private static $autoloadDirectories;
 	
-	public static function autoloadInit($directoryList) {
+	public static function autoload($directoryList) {
 		self::$autoloadDirectories = array();
 		foreach($directoryList as $directory) {
 			
+			/*
+			 * Add given directory itself and all subdirectories...
+			 */
+			self::$autoloadDirectories[] = $directory.'/';
 			self::$autoloadDirectories = array_merge(
 				self::$autoloadDirectories, 
 				glob($directory."/*/", GLOB_ONLYDIR)
 			);
-			
+		}
+		
+		/*
+		 * Register autoload callback function
+		 */
+		spl_autoload_register("self::autoloadCallback");
+	}
+	
+	private static function autoloadCallback($classname) {
+		foreach(self::$autoloadDirectories as $dir) {
+			if(file_exists($dir.$classname.".php")) {
+				TestingTools::debug("Loading class ".$dir.$classname.".php");
+				require_once($dir.$classname.".php");
+			}
 		}
 	}
 }
