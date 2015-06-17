@@ -207,6 +207,10 @@ class StringTools {
 		throw new Exception("Not implemented yet!");
 	}
 	
+	public static function unescapeHtmlTags($txt) {
+		return str_replace(array('\"', '\>'), array('"', '&gt;'), $txt);
+	}
+	
 }
 
 ?>
