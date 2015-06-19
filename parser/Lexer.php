@@ -2,7 +2,7 @@
 /**
  * Lexer :: Creates an Abstract Syntax Tree (=AST). Inspired by docuwiki.
  * @author Peter Moser
- * @version 0.5 - newStyle
+ * @version Lexer::$version
  * @package Lexer
  */
 
@@ -40,15 +40,14 @@ require_once INC_PATH.'pwTools/debug/Log.php';
 
 class Lexer {
 	
-	public static $version = "0.5.1";
+	public static $version = "0.6";
 	
 	const TEXTNOTEMPTY	= 16; // Token must have a #Text node (NOT EMPTY)
 	
 	private $_textInput = null;			// Given string to analyze!
-	private $_textPosition = 0;			// Current text position inside the string.
+	private $_offset = 0;			// Current text position inside the string.
 	private $_currentMode;
 	private $_aftermatch = "";
-	private $_currentLine = "";
 	private $_currentLineNumber = 0;
 	private $_temptxt = "";
 	private $_remtext = "";
@@ -62,7 +61,6 @@ class Lexer {
 	private $_handlerTable = null;
 	private $_handlerTableActive = null;
 	private $_originalTextFileFormat = null;
-	
 
 	public function __construct() {
 		$this->_handlerTable = new Collection();
@@ -90,8 +88,6 @@ class Lexer {
 			$this->_cycle++;
 			$token = $this->_getToken();
 			if ($token) {
-				$this->_currentLine = $token->getTextFull();
-				$this->_updateTextPosition();
 				if ($token->isExit()) {
 					$this->_addNodeOnClose($token);
 				} else {
@@ -104,7 +100,7 @@ class Lexer {
 
 		$this->_parsed = true;
 		
-		TestingTools::logDebug("FINISHED: @$this->_textPosition (line $this->_currentLineNumber)");
+		TestingTools::logDebug("FINISHED: @$this->_offset (line $this->_currentLineNumber)");
 	}
 
 	public function getExecutionTime() {
@@ -168,17 +164,46 @@ class Lexer {
 			throw new InvalidArgumentException("Wrong datatype!");
 		}
 		
+		/*
+		 * Nothing matched and end-of-file reached, i.e., no token found and 
+		 * inside #DOCUMENT node => append #EOF node with remaining text.
+		 */
 		if (empty($regexpMatch) && $this->_currentMode->getName() == Token::DOC) {
-			return new Token(Token::EOF, $this->_temptxt, $this->_temptxt, null); // Nothing matched: EOF reached!
+			$remainingText = utf8_substr($this->_textInput, $this->_offset);
+			return new Token(Token::EOF, $remainingText, $remainingText, null, $this->_offset);
 		} 
 
 		$name = $this->_getTokenName($regexpMatch);
-		$regexpMatch = $this->_cleanupArray($regexpMatch);
-		$beforeMatch = $regexpMatch[1];
-		$completeMatch = $regexpMatch[0];
-		$conf = array_slice($regexpMatch, 2, -1);
+
+		/*
+		 * Location of this token inside the full text is at the location of the
+		 * full match (=[0]) + string length of the match before the token itself,
+		 * i.e., the #TEXT node before the actual token match.
+		 * 
+		 * Note: The 2nd index is as follows: [0]=content/string, [1]=location
+		 */
+		$location = $regexpMatch[0][1] + utf8_strlen($regexpMatch[1][0]);
 		
-		return new Token($name, $beforeMatch, $completeMatch, $conf);
+		/*
+		 * Extract the $completeMatch, i.e. #TEXT before and token after, and
+		 * the #TEXT before the token as $beforeMatch.
+		 */
+		$completeMatch = $regexpMatch[0][0];
+		$beforeMatch = $regexpMatch[1][0];
+		
+		/*
+		 * All match array entries after the first two are config-elements, if 
+		 * the were found, the position index != -1.
+		 * Remove the position information and keep only content/string.
+		 */
+		$regexpMatch = array_slice($regexpMatch, 2);
+		$conf = array();
+		foreach ($regexpMatch as $i) {
+			if ($i[1] != -1) {
+				$conf[] = $i[0];
+			}
+		}
+		return new Token($name, $beforeMatch, $completeMatch, $conf, $location);
 	}
 
 	private function _getTokenName($m) {
@@ -188,17 +213,6 @@ class Lexer {
 			}
 		}
 		throw new Exception("ID not found in patternorder-table!");
-	}
-
-	private function _cleanupArray($m) {
-		$out = array();
-
-		foreach ($m as $i) {
-			if ($i[1] != -1) {
-				$out[] = $i[0];
-			}
-		}
-		return $out;
 	}
 
 	private function _getToken() {
@@ -214,55 +228,73 @@ class Lexer {
 		$pattern = $this->_patternTable->get($parent->getName());
 		$this->_currentMode = $pattern;
 		
+		/*
+		 * Search for a token in _textInput from the regular expressions allowed
+		 * in the current $parent, starting from the _offset previously stopped.
+		 */
 		$matches = array();
-		$regex = $this->_currentMode->getRegexp();
-		if (!preg_match($regex, $this->_temptxt, $matches, PREG_OFFSET_CAPTURE) && $pattern->getName() != Token::DOC) {
-			$pattern = $this->_patternTable->get($parent->getName());
-			$expected = stripslashes($pattern->getExit());
-			$found = substr($this->_temptxt, 0, strlen($expected));
-			$expected = pw_s2e_whiteSpace($expected);
-				
-// 			$dbginf = array(
-// 				'TYPE' 		=> 'Syntax',	// TODO use constants not strings for dbginf types!
-// 				'DESC'		=> "The Mode '{$pattern->getName()}' has been started here, but wasn't ever ended!",
-// 				'LINENR' 	=> $this->_currentLineNumber,
-// 				'TXTPOS' 	=> $this->_textPosition,
-// 				'ENTRYNODE' => $parent,
-// 				'PATTERN'	=> $pattern,
-// 				//'ENTRYTOKEN' => ... TODO started @ line ".$dientry['LINENR']."; textposition = ".$dientry['TXTPOS'] save debuginfo inside a tokenlist.
-// 			);
-
-			$errorMsg = "Exit of $pattern not found: '$expected' expected but '$found' found @$this->_textPosition (line $this->_currentLineNumber).";
-			TestingTools::logError($errorMsg);
+		$hasMatch = preg_match(
+				$pattern->getRegExp(), 
+				$this->_textInput, 
+				$matches, 
+				PREG_OFFSET_CAPTURE, 
+				$this->_offset);
+		
+		/*
+		 * When a token has been found or when we are inside #DOCUMENT return
+		 * the token with name, text location, and config-elements. Then update
+		 * line number and move to the new _offset after the current token.
+		 */
+		if ($hasMatch || $pattern->getName() == Token::DOC) {
+			$token = $this->_getNamedToken($matches);
+			TestingTools::debug($token);
 			
-			//TODO Make a WikiSyntaxErrorException(); and add textposition and other infos
-			throw new Exception($errorMsg);
+			// 		if ($token->getTextLength() == 0 && $this->_lastNode->getName() == $token->getName()) {
+			// 			$errorMsg = "Textpointer has not moved for pattern '".$token->getName()."'. Try the NO_RESTORE flag.";
+			// 			$this->_log->addError($errorMsg);
+			// 			throw new Exception($errorMsg);
+			// 		}
+			
+			// 		$this->_temptxt = substr($this->_temptxt, $token->getTextLength());
+			$this->_offset += $token->getTextLength();
+			$this->_currentLineNumber = count(explode("\n", substr($this->_textInput, 0, $this->_offset))) - 1;
+			
+			// 		$debugInfo = array(
+			// 			"LINENR"       => $this->_currentLineNumber,
+			// 			"LASTNODE"     => $this->_lastNode,
+			// 			"PARENT"       => $parent,
+			// 			"TOKEN"        => $token,
+			// 			"TXTPOS"       => $this->_textPosition,
+			// 			"PARENTSTACK"  => $this->_parentStack,
+			// 		);
+			TestingTools::logDebug($this->_logFormat("TOKEN FOUND", "$token"));
+			return $token;
 		}
-
-		$token = $this->_getNamedToken($matches);
-// 		TestingTools::debug($token);
 		
-// 		if ($token->getTextLength() == 0 && $this->_lastNode->getName() == $token->getName()) {
-// 			$errorMsg = "Textpointer has not moved for pattern '".$token->getName()."'. Try the NO_RESTORE flag.";
-// 			$this->_log->addError($errorMsg);
-// 			throw new Exception($errorMsg);
-// 		}
-
-		$this->_temptxt = substr($this->_temptxt, $token->getTextLength());
-
-// 		$debugInfo = array(
-// 			"LINENR"       => $this->_currentLineNumber,
-// 			"LASTNODE"     => $this->_lastNode,
-// 			"PARENT"       => $parent,
-// 			"TOKEN"        => $token,
-// 			"TXTPOS"       => $this->_textPosition,
-// 			"PARENTSTACK"  => $this->_parentStack,
-// 		);
-		TestingTools::logDebug($this->_logFormat("TOKEN FOUND", "$token @$this->_textPosition: "));
-
-		$this->_textPosition += $token->getTextLength();
+		$pattern = $this->_patternTable->get($parent->getName());
+		$expected = stripslashes($pattern->getExit());
+			
+		$found = substr($this->_textInput, $this->_offset, utf8_strlen($expected));
+			
+		// 			$dbginf = array(
+		// 				'TYPE' 		=> 'Syntax',	// TODO use constants not strings for dbginf types!
+		// 				'DESC'		=> "The Mode '{$pattern->getName()}' has been started here, but wasn't ever ended!",
+		// 				'LINENR' 	=> $this->_currentLineNumber,
+		// 				'TXTPOS' 	=> $this->_textPosition,
+		// 				'ENTRYNODE' => $parent,
+		// 				'PATTERN'	=> $pattern,
+		// 				//'ENTRYTOKEN' => ... TODO started @ line ".$dientry['LINENR']."; textposition = ".$dientry['TXTPOS'] save debuginfo inside a tokenlist.
+		// 			);
 		
-		return $token;
+		$errorMsg = "Exit of $pattern not found: '".
+				pw_s2e_whiteSpace($expected).
+				"' expected but '".
+				pw_s2e_whiteSpace($found).
+				"' found @$this->_offset (line $this->_currentLineNumber).";
+				TestingTools::logError($errorMsg);
+					
+		//TODO Make a WikiSyntaxErrorException(); and add textposition and other infos
+		throw new Exception($errorMsg);
 	}
 
 	private function _connectTo($name, $to) {
@@ -275,7 +307,11 @@ class Lexer {
 		}
 
 		if ($pattern->getConnectTo() !== null) {
-			TestingTools::logWarn("CONNECTTO for '$name->".$this->_patternTable->get($name)->getConnectTo()."' already set in patterntable! Will be altered to '$name->$to'!");
+			TestingTools::logWarn(
+					"CONNECTTO for '$name->".
+					$this->_patternTable->get($name)->getConnectTo().
+					"' already set in patterntable! Will be altered to '$name->$to'!"
+					);
 		}
 
 		$pattern->setConnectTo($to);
@@ -448,11 +484,13 @@ class Lexer {
 
 		$this->_parentStackAdd($node);
 
-		TestingTools::logDebug($this->_logFormat("ADD #ABSTRACT", "$node @$this->_textPosition"), array(
-			"LASTNODE"	   => $this->_lastNode,
-			"PARENT"       => $parent,
-			"PARENTSTACK"  => $this->_parentStack
-		));
+		TestingTools::logDebug(
+				$this->_logFormat("ADD #ABSTRACT", "$node @$this->_offset"), 
+				array(
+					"LASTNODE"	   => $this->_lastNode,
+					"PARENT"       => $parent,
+					"PARENTSTACK"  => $this->_parentStack
+				));
 	}
 	
 	private function _parentStackAdd($node) {
@@ -520,7 +558,7 @@ class Lexer {
 			// Backstep... Some matched strings must get preserved after the recognition of an exit token,
 			// otherwise some entry tokens do not find there whole match (ex. NEWLINES missing)
 			if ($pattern->getRestore() != "") {
-				$this->_textPosition -= strlen($token->getTextFull());
+				$this->_offset -= strlen($token->getTextFull());
 				$this->_temptxt = $token->getTextFull().$this->_temptxt;
 			}
 		} else {
@@ -611,7 +649,7 @@ class Lexer {
 		// f?r den n?chsten Entry-Tag bewahrt bleiben.
 		$pattern = $this->_patternTable->get($token->getName());
 		if ($pattern->getRestore() != "") {
-			$this->_textPosition -= strlen($pattern->getRestore());
+			$this->_offset -= strlen($pattern->getRestore());
 			$this->_temptxt = $pattern->getRestore().$this->_temptxt;
 		}
 
@@ -638,23 +676,6 @@ class Lexer {
 		
 	}
 
-	private function _updateTextPosition() {
-
-		$this->_aftermatch = $this->_temptxt;
-
-		// Length Match-String and Rest
-		$lenmarest = strlen($this->_aftermatch.$this->_currentLine);
-		$beforeMatch = substr($this->_textInput, 0, strlen($this->_textInput) - $lenmarest);
-
-		$lines = array();
-		preg_match_all("#\n#", $beforeMatch.$this->_currentLine, $lines);
-		$lines = $lines[0];
-		$this->_currentLineNumber = count($lines);
-		if (substr($beforeMatch.$this->_currentLine, -1) == "\n") {
-			$this->_currentLineNumber--;
-		}
-	}
-	
 	private function _logFormat($command, $info) {
 		return sprintf("c%d: %s %s", $this->_cycle, $command, $info); 
 	}

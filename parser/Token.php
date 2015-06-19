@@ -1,13 +1,5 @@
 <?php
 
-if (!defined('INC_PATH')) {
-	define ('INC_PATH', realpath(dirname(__FILE__).'/../../').'/');
-}
-
-require_once INC_PATH.'pwTools/string/encoding.php';
-require_once INC_PATH.'pwTools/tree/Node.php';
-require_once INC_PATH.'pwTools/debug/TestingTools.php';
-
 class Token extends Node {
 	
 	const EOF = '#EOF';
@@ -20,8 +12,9 @@ class Token extends Node {
 	private $_tokenMatch = "";
 	private $_config = null;
 	private $_typeExit = false;
+	private $_location = -1;  /* Unknown location */
 
-	public function __construct($name, $beforeMatch = "", $completeMatch = "", $conf = null) {
+	public function __construct($name, $beforeMatch = "", $completeMatch = "", $conf = null, $location = -1) {
 		$this->_name = $name;
 		$this->_typeExit = (substr($name, 0, 8) == "__exit__");
 		if ($this->isExit()) {
@@ -31,12 +24,12 @@ class Token extends Node {
 		$this->_completeMatch = $completeMatch;
 		$this->_tokenMatch = substr($completeMatch, strlen($beforeMatch));
 		$this->_config = $conf;
-// 		TestingTools::inform($this->_tokenMatch);
+		$this->_location = $location;
 	}
 	
 	public function __toString() {
 		$exit = $this->_typeExit ? "EXIT" : "ENTRY";
-		return "[Token: $this->_name: ".pw_s2e_whiteSpace($this->_tokenMatch).", LENGTH={$this->getTextLength()}, $exit]";
+		return "[Token: $this->_name: ".pw_s2e_whiteSpace($this->_tokenMatch).", LENGTH={$this->getTextLength()}, LOCATION=$this->_location, $exit]";
 	}
 	
 	public function isExit() {
@@ -56,9 +49,9 @@ class Token extends Node {
 		return $this->_tokenMatch;
 	}
 	
-	#public function getTextPosition() {
-	#	return $this->_tokenEndCharIndex;
-	#}
+	public function getLocation() {
+		return $this->_location;
+	}
 	
 	public function getName() {
 		return $this->_name;
